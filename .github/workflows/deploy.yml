@@ -26,16 +26,17 @@ jobs:
 
             APP_DIR="${{ secrets.DEPLOY_SERVER_DIR }}"
             APP_NAME="next-app"
+            APP_PORT=4000
 
             echo "📁 Ensure app directory exists"
             mkdir -p "$APP_DIR"
             cd "$APP_DIR"
 
-            # ✅ Trust GitHub host for first-time SSH
+            # Trust GitHub host
             mkdir -p ~/.ssh
             ssh-keyscan github.com >> ~/.ssh/known_hosts
 
-            # ✅ Use Node 22 if using nvm
+            # Use Node 22 if nvm is installed
             if [ -s "$HOME/.nvm/nvm.sh" ]; then
               export NVM_DIR="$HOME/.nvm"
               . "$NVM_DIR/nvm.sh"
@@ -60,10 +61,10 @@ jobs:
 
             if pm2 list | grep -q "$APP_NAME"; then
               echo "♻️ Reloading existing PM2 app"
-              pm2 reload "$APP_NAME"
+              pm2 reload "$APP_NAME" --update-env
             else
-              echo "🚀 Starting app with PM2 (first time)"
-              pm2 start npm --name "$APP_NAME" -- start
+              echo "🚀 Starting app with PM2 on port $APP_PORT"
+              pm2 start npm --name "$APP_NAME" -- start -- -p $APP_PORT
               pm2 save
             fi
 
