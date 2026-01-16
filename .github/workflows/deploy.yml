@@ -1,0 +1,60 @@
+name: Deploy Next.js App
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup SSH
+        uses: webfactory/ssh-agent@v0.8.0
+        with:
+          ssh-private-key: ${{ secrets.DEPLOY_SERVER_KEY }}
+
+      - name: Deploy to server
+        run: |
+          ssh -o StrictHostKeyChecking=no \
+          ${{ secrets.DEPLOY_SERVER_USER }}@${{ secrets.DEPLOY_SERVER_IP }} << 'EOF'
+            set -e
+
+            APP_DIR="${{ secrets.DEPLOY_SERVER_DIR }}"
+            APP_NAME="next-app"
+
+            echo "📁 Ensure app directory exists"
+            mkdir -p "$APP_DIR"
+            cd "$APP_DIR"
+
+            if [ ! -d ".git" ]; then
+              echo "⬇️ First deploy – cloning repository"
+              git clone git@github.com:asimur244-jpg/next-deploy.git .
+            else
+              echo "🔄 Updating repository"
+              git reset --hard HEAD
+              git clean -df
+              git pull origin main
+            fi
+
+            echo "📦 Installing dependencies"
+            npm ci
+
+            echo "🏗️ Building Next.js"
+            npm run build
+
+            if pm2 list | grep -q "$APP_NAME"; then
+              echo "♻️ Reloading existing PM2 app"
+              pm2 reload "$APP_NAME"
+            else
+              echo "🚀 Starting app with PM2 (first time)"
+              pm2 start npm --name "$APP_NAME" -- start
+              pm2 save
+            fi
+
+            echo "✅ Deployment finished"
+          EOF
