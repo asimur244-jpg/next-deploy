@@ -31,6 +31,17 @@ jobs:
             mkdir -p "$APP_DIR"
             cd "$APP_DIR"
 
+            # ✅ Trust GitHub host for first-time SSH
+            mkdir -p ~/.ssh
+            ssh-keyscan github.com >> ~/.ssh/known_hosts
+
+            # ✅ Use Node 22 if using nvm
+            if [ -s "$HOME/.nvm/nvm.sh" ]; then
+              export NVM_DIR="$HOME/.nvm"
+              . "$NVM_DIR/nvm.sh"
+              nvm use 22 || nvm install 22
+            fi
+
             if [ ! -d ".git" ]; then
               echo "⬇️ First deploy – cloning repository"
               git clone git@github.com:asimur244-jpg/next-deploy.git .
